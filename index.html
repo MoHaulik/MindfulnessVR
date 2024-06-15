@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mindfulness Website</title>
+    <style>
+        @font-face {
+            font-family: 'PangramSans';
+            src: url('PPPangramSansRounded-Semibold-1ab2f90b.woff2') format('woff2'),
+                 url('PPPangramSansRounded-CompactRegular-6aa71960.woff2') format('woff2'),
+                 url('PPPangramSans-Medium-86e281ae.woff2') format('woff2'),
+                 url('PPPangramSans-Bold-f02861ce.woff2') format('woff2');
+        }
+
+        body, html {
+            margin: 0;
+            height: 100%;
+            overflow: hidden;
+            font-family: 'PangramSans', sans-serif;
+            background: black;
+        }
+
+        .content {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            text-align: center;
+            color: white;
+            z-index: 2;
+            padding: 0 20px;
+            box-sizing: border-box;
+        }
+
+        .hidden {
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 1s ease-in-out, visibility 1s ease-in-out;
+        }
+
+        #renderCanvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+    <div class="content">
+        <div id="intro-text">Take a moment to reflect</div>
+        <div id="mindfulness-text" class="hidden"></div>
+        <div id="end-text" class="hidden"></div>
+    </div>
+    <canvas id="renderCanvas"></canvas>
+    <audio id="goal-sound" src="goal.mp3" preload="auto"></audio>
+
+    <script src="https://cdn.babylonjs.com/babylon.js"></script>
+    <script src="https://cdn.babylonjs.com/loaders/babylonjs.loaders.min.js"></script>
+    <script src="https://cdn.babylonjs.com/inspector/babylon.inspector.bundle.js"></script>
+    <script src="https://code.jquery.com/pep/0.4.3/pep.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const introText = document.getElementById('intro-text');
+            const mindfulnessText = document.getElementById('mindfulness-text');
+            const endText = document.getElementById('end-text');
+            const goalSound = document.getElementById('goal-sound');
+
+            const mindfulnessMessages = [
+                { text: "Think about who you will probably see next. Imagine bringing kindness to this interaction.", end: "Bring kindness to all your upcoming interactions" },
+                { text: "Reflect on one thing you’re grateful for and think about why you appreciate it so much.", end: "Carry gratitude with you throughout the day." },
+                { text: "Recall a time recently when you felt a sense of calm. Bring that feeling into this moment.", end: "Hold onto this calmness as you go about your day." }
+            ];
+
+            const canvas = document.getElementById("renderCanvas");
+
+            const engine = new BABYLON.Engine(canvas, true);
+            const createScene = () => {
+                const scene = new BABYLON.Scene(engine);
+
+                const camera = new BABYLON.ArcRotateCamera("camera", Math.PI / 2, Math.PI / 2, 2, new BABYLON.Vector3(0, 0, 5), scene);
+                camera.attachControl(canvas, true);
+
+                const light = new BABYLON.HemisphericLight("light", new BABYLON.Vector3(1, 1, 0), scene);
+                light.intensity = 0.7;
+
+                const createLavaLampBackground = () => {
+                    const plane = BABYLON.MeshBuilder.CreatePlane("plane", { width: 10, height: 10 }, scene);
+                    const dynamicTexture = new BABYLON.DynamicTexture("dynamicTexture", { width: 512, height: 512 }, scene);
+
+                    plane.material = new BABYLON.StandardMaterial("material", scene);
+                    plane.material.diffuseTexture = dynamicTexture;
+
+                    const context = dynamicTexture.getContext();
+                    let offset = 0;
+
+                    scene.registerBeforeRender(() => {
+                        context.clearRect(0, 0, 512, 512);
+                        context.fillStyle = `hsl(${offset % 360}, 100%, 50%)`;
+                        context.beginPath();
+                        context.arc(256, 256, 200, 0, Math.PI * 2);
+                        context.fill();
+                        dynamicTexture.update();
+                        offset += 0.5;
+                    });
+
+                    return plane;
+                };
+
+                createLavaLampBackground();
+
+                return scene;
+            };
+
+            const scene = createScene();
+
+            engine.runRenderLoop(() => {
+                scene.render();
+            });
+
+            window.addEventListener("resize", () => {
+                engine.resize();
+            });
+
+            setTimeout(() => {
+                introText.classList.add('hidden');
+                goalSound.play();
+
+                const randomMessage = mindfulnessMessages[Math.floor(Math.random() * mindfulnessMessages.length)];
+                mindfulnessText.textContent = randomMessage.text;
+                endText.textContent = randomMessage.end;
+
+                mindfulnessText.classList.remove('hidden');
+                mindfulnessText.classList.add('fade-in-out');
+
+                setTimeout(() => {
+                    mindfulnessText.classList.add('hidden');
+                    mindfulnessText.classList.remove('fade-in-out');
+                    
+                    setTimeout(() => {
+                        endText.classList.remove('hidden');
+                        goalSound.play();
+
+                        setTimeout(() => {
+                            endText.classList.add('hidden');
+                            introText.classList.remove('hidden');
+                        }, 30000);  // Show end text for 30 seconds
+                    }, 180000);  // Wait for 3 minutes before showing end text
+                }, 20000);  // Show mindfulness text for 20 seconds
+            }, 10000); // Start after 10 seconds
+        });
+    </script>
+</body>
+</html>

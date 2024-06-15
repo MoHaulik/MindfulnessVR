@@ -1,0 +1,14 @@
+@font-face {
+    font-family: 'PangramSans';
+    src: url('PPPangramSansRounded-Semibold-1ab2f90b.woff2') format('woff2'),
+         url('PPPangramSansRounded-CompactRegular-6aa71960.woff2') format('woff2'),
+         url('PPPangramSans-Medium-86e281ae.woff2') format('woff2'),
+         url('PPPangramSans-Bold-f02861ce.woff2') format('woff2');
+}
+
+body, html {
+    margin: 0;
+    height: 100%;
+    overflow: hidden;
+    font-family: 'PangramSans', sans-serif;
+}
