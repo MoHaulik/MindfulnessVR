@@ -1,77 +1,97 @@
 document.addEventListener('DOMContentLoaded', () => {
-    const container = document.body;
     const introText = document.getElementById('intro-text');
     const mindfulnessText = document.getElementById('mindfulness-text');
     const endText = document.getElementById('end-text');
-    const overlay = document.querySelector('.overlay');
-    const enterVRButton = document.getElementById('enter-vr');
-    
+    const vrButton = document.getElementById('vr-button');
+    let xrSession = null;
+    let xrRefSpace = null;
+
     const mindfulnessMessages = [
         { text: "Think about who you will probably see next. Imagine bringing kindness to this interaction.", end: "Bring kindness to all your upcoming interactions" },
         { text: "Reflect on one thing you’re grateful for and think about why you appreciate it so much.", end: "Carry gratitude with you throughout the day." },
         { text: "Recall a time recently when you felt a sense of calm. Bring that feeling into this moment.", end: "Hold onto this calmness as you go about your day." }
     ];
 
-    const scene = new THREE.Scene();
-    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
-    const renderer = new THREE.WebGLRenderer({ antialias: true });
-    renderer.setSize(window.innerWidth, window.innerHeight);
-    renderer.xr.enabled = true;
-    container.appendChild(renderer.domElement);
-    document.body.appendChild(VRButton.createButton(renderer));
+    // WebXR setup
+    async function initXR() {
+        if (navigator.xr) {
+            try {
+                xrSession = await navigator.xr.requestSession('immersive-vr');
+                onSessionStarted(xrSession);
+            } catch (e) {
+                console.error('Failed to create XR session', e);
+            }
+        } else {
+            console.error('WebXR not supported');
+        }
+    }
 
-    const geometry = new THREE.SphereGeometry(500, 60, 40);
-    const uniforms = {
-        time: { value: 1.0 }
-    };
-    const material = new THREE.ShaderMaterial({
-        uniforms: uniforms,
-        vertexShader: `
-            varying vec2 vUv;
-            void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            uniform float time;
-            varying vec2 vUv;
-            void main() {
-                vec2 p = -1.0 + 2.0 * vUv;
-                float len = length(p);
-                vec3 color = vec3(0.5 + 0.5*cos(time+len*2.0+vec3(0,2,4)), 0.5 + 0.5*cos(time+len*2.0+vec3(2,4,0)), 0.5 + 0.5*cos(time+len*2.0+vec3(4,0,2)));
-                gl_FragColor = vec4(color, 1.0);
-            }
-        `,
-        side: THREE.BackSide
+    function onSessionStarted(session) {
+        session.addEventListener('end', onSessionEnded);
+
+        const gl = document.createElement('canvas').getContext('webgl');
+        if (!gl) {
+            console.error('WebGL not supported');
+            return;
+        }
+
+        session.updateRenderState({ baseLayer: new XRWebGLLayer(session, gl) });
+
+        session.requestReferenceSpace('local').then((refSpace) => {
+            xrRefSpace = refSpace;
+            session.requestAnimationFrame(onXRFrame);
+        });
+    }
+
+    function onXRFrame(time, frame) {
+        const session = frame.session;
+        session.requestAnimationFrame(onXRFrame);
+
+        const pose = frame.getViewerPose(xrRefSpace);
+        if (pose) {
+            // Render the scene here
+        }
+    }
+
+    function onSessionEnded() {
+        xrSession = null;
+    }
+
+    // VR Button event listener
+    vrButton.addEventListener('click', () => {
+        if (!xrSession) {
+            initXR();
+        } else {
+            xrSession.end();
+        }
     });
-    const mesh = new THREE.Mesh(geometry, material);
-    scene.add(mesh);
 
-    camera.position.set(0, 0, 0);
-
-    function animate() {
-        uniforms.time.value += 0.05;
-        renderer.setAnimationLoop(render);
+    // Function to set random gradient background
+    function setRandomBackground() {
+        const warmColors = '89ABCDEF';
+        const coolColors = '01234567';
+        const color1 = getRandomColor(warmColors);
+        const color2 = getRandomColor(coolColors);
+        document.querySelector('.lava-lamp-background').style.background = `linear-gradient(45deg, ${color1}, ${color2})`;
     }
 
-    function render() {
-        renderer.render(scene, camera);
+    function getRandomColor(range) {
+        const letters = '0123456789ABCDEF';
+        let color = '#';
+        for (let i = 0; i < 6; i++) {
+            color += range[Math.floor(Math.random() * range.length)];
+        }
+        return color;
     }
 
-    renderer.setAnimationLoop(animate);
+    // Initial setup
+    setRandomBackground();
+    const randomMessage = mindfulnessMessages[Math.floor(Math.random() * mindfulnessMessages.length)];
+    mindfulnessText.textContent = randomMessage.text;
+    endText.textContent = randomMessage.end;
 
-    enterVRButton.addEventListener('click', () => {
+    introText.addEventListener('click', () => {
         introText.classList.add('hidden');
-        overlay.style.display = 'none';
-        displayMindfulnessText();
-    });
-
-    function displayMindfulnessText() {
-        const randomMessage = mindfulnessMessages[Math.floor(Math.random() * mindfulnessMessages.length)];
-        mindfulnessText.textContent = randomMessage.text;
-        endText.textContent = randomMessage.end;
-
         mindfulnessText.classList.remove('hidden');
         setTimeout(() => {
             mindfulnessText.classList.add('hidden');
@@ -79,8 +99,11 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 endText.classList.add('hidden');
                 introText.classList.remove('hidden');
-                overlay.style.display = 'block';
-            }, 30000); // Show end text for 30 seconds
-        }, 20000); // Show mindfulness text for 20 seconds
-    }
+                setRandomBackground();
+                const newRandomMessage = mindfulnessMessages[Math.floor(Math.random() * mindfulnessMessages.length)];
+                mindfulnessText.textContent = newRandomMessage.text;
+                endText.textContent = newRandomMessage.end;
+            }, 30000);
+        }, 20000);
+    });
 });
